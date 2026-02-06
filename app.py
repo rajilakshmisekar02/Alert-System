@@ -1,19 +1,17 @@
 from flask import Flask
-from flask_socketio import SocketIO
+from flask_sock import Sock
 from twilio.rest import Client
 import os
+import json
 import time
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")
+sock = Sock(app)
 
 TWILIO_SID = os.getenv("TWILIO_SID")
 TWILIO_TOKEN = os.getenv("TWILIO_TOKEN")
 FROM_NUMBER = os.getenv("TWILIO_FROM")
 TO_NUMBER = os.getenv("CLIENT_NUMBER")
-
-if not TWILIO_SID or not TWILIO_TOKEN or not FROM_NUMBER or not TO_NUMBER:
-    print("⚠️ TWILIO ENV VARIABLES MISSING!")
 
 client = Client(TWILIO_SID, TWILIO_TOKEN)
 
@@ -21,8 +19,7 @@ GAS_THRESHOLD = 350
 WEIGHT_THRESHOLD = 2.0
 
 last_alert_time = 0
-ALERT_COOLDOWN = 300   # 5 minutes
-
+ALERT_COOLDOWN = 300
 
 def send_sms(msg):
     try:
@@ -33,57 +30,55 @@ def send_sms(msg):
         )
         print("SMS Sent Successfully")
     except Exception as e:
-        print("SMS Sending Failed:", e)
+        print("SMS Failed:", e)
 
+@sock.route('/ws')
+def websocket(ws):
 
-@socketio.on('connect')
-def connected():
-    print("Device Connected")
-
-
-@socketio.on('message')
-def handle_message(data):
+    print("ESP8266 Connected")
 
     global last_alert_time
 
-    gas = data.get("gas", 0)
-    fire = data.get("fire", False)
-    weight = data.get("weight", 0)
-    device = data.get("device_id", "Unknown Device")
+    while True:
+        data = ws.receive()
 
-    alert = False
-    msg = f"Alert from {device}\n"
+        print("Raw Data:", data)
 
-    if gas > GAS_THRESHOLD:
-        msg += "Gas Leak Detected\n"
-        alert = True
+        try:
+            payload = json.loads(data)
+        except:
+            print("Invalid JSON")
+            continue
 
-    if fire:
-        msg += "Fire Detected\n"
-        alert = True
+        gas = payload.get("gas", 0)
+        fire = payload.get("fire", False)
+        weight = payload.get("weight", 0)
+        device = payload.get("device_id", "Unknown")
 
-    if weight < WEIGHT_THRESHOLD:
-        msg += "Low Cylinder Level\n"
-        alert = True
+        alert = False
+        msg = f"Alert from {device}\n"
 
-    current = time.time()
+        if gas > GAS_THRESHOLD:
+            msg += "Gas Leak Detected\n"
+            alert = True
 
-    if alert and (current - last_alert_time) > ALERT_COOLDOWN:
-        send_sms(msg)
-        last_alert_time = current
+        if fire:
+            msg += "Fire Detected\n"
+            alert = True
 
-    print("Data Received:", data)
+        if weight < WEIGHT_THRESHOLD:
+            msg += "Low Cylinder Level\n"
+            alert = True
 
+        current = time.time()
 
-@socketio.on('disconnect')
-def disconnected():
-    print("Device Disconnected")
-
+        if alert and (current - last_alert_time) > ALERT_COOLDOWN:
+            send_sms(msg)
+            last_alert_time = current
 
 @app.route('/')
-def hello_world():
-    return 'Server is running....'
-
+def home():
+    return "Server is running...."
 
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=8080)
+    app.run(host="0.0.0.0", port=8080)
