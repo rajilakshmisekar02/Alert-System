@@ -1,13 +1,11 @@
-from flask import Flask
-from flask_sock import Sock
+from flask import Flask, request, jsonify
 from twilio.rest import Client
 import os
-import json
 import time
 
 app = Flask(__name__)
-sock = Sock(app)
 
+# Twilio Config
 TWILIO_SID = os.getenv("TWILIO_SID")
 TWILIO_TOKEN = os.getenv("TWILIO_TOKEN")
 FROM_NUMBER = os.getenv("TWILIO_FROM")
@@ -19,7 +17,8 @@ GAS_THRESHOLD = 350
 WEIGHT_THRESHOLD = 2.0
 
 last_alert_time = 0
-ALERT_COOLDOWN = 300
+ALERT_COOLDOWN = 300   # 5 minutes
+
 
 def send_sms(msg):
     try:
@@ -28,57 +27,53 @@ def send_sms(msg):
             from_=FROM_NUMBER,
             to=TO_NUMBER
         )
-        print("SMS Sent Successfully")
+        print("SMS Sent")
     except Exception as e:
-        print("SMS Failed:", e)
+        print("SMS Error:", e)
 
-@sock.route('/ws')
-def websocket(ws):
-
-    print("ESP8266 Connected")
-
-    global last_alert_time
-
-    while True:
-        data = ws.receive()
-
-        print("Raw Data:", data)
-
-        try:
-            payload = json.loads(data)
-        except:
-            print("Invalid JSON")
-            continue
-
-        gas = payload.get("gas", 0)
-        fire = payload.get("fire", False)
-        weight = payload.get("weight", 0)
-        device = payload.get("device_id", "Unknown")
-
-        alert = False
-        msg = f"Alert from {device}\n"
-
-        if gas > GAS_THRESHOLD:
-            msg += "Gas Leak Detected\n"
-            alert = True
-
-        if fire:
-            msg += "Fire Detected\n"
-            alert = True
-
-        if weight < WEIGHT_THRESHOLD:
-            msg += "Low Cylinder Level\n"
-            alert = True
-
-        current = time.time()
-
-        if alert and (current - last_alert_time) > ALERT_COOLDOWN:
-            send_sms(msg)
-            last_alert_time = current
 
 @app.route('/')
 def home():
-    return "Server is running...."
+    return "Alert System Running"
+
+
+@app.route('/data', methods=['POST'])
+def receive_data():
+
+    global last_alert_time
+
+    data = request.get_json()
+
+    print("Received:", data)
+
+    gas = data.get("gas", 0)
+    fire = data.get("fire", False)
+    weight = data.get("weight", 0)
+    device = data.get("device_id", "ESP8266")
+
+    alert = False
+    msg = f"Alert from {device}\n"
+
+    if gas > GAS_THRESHOLD:
+        msg += "Gas Leak Detected\n"
+        alert = True
+
+    if fire:
+        msg += "Fire Detected\n"
+        alert = True
+
+    if weight < WEIGHT_THRESHOLD:
+        msg += "Low Cylinder Level\n"
+        alert = True
+
+    current = time.time()
+
+    if alert and (current - last_alert_time) > ALERT_COOLDOWN:
+        send_sms(msg)
+        last_alert_time = current
+
+    return jsonify({"status": "ok"})
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
