@@ -6,7 +6,9 @@ from flask_socketio import SocketIO
 
 app = Flask(__name__)
 # cors_allowed_origins="*" is important for external devices like ESP32
-socketio = SocketIO(app, cors_allowed_origins="*")
+# socketio = SocketIO(app, cors_allowed_origins="*")
+# In your app.py
+socketio = SocketIO(app, cors_allowed_origins="*", ping_timeout=60, ping_interval=25)
 
 @app.route('/')
 def index():
