@@ -1,3 +1,4 @@
 flask
-flask-sock
 twilio
+flask-socketio
+eventlet
