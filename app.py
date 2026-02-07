@@ -20,6 +20,3 @@ def handle_pot_value(data):
 if __name__ == '__main__':
     # Use '0.0.0.0' so it's accessible over the internet
     socketio.run(app, host='0.0.0.0', port=5000)
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
