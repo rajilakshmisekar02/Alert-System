@@ -17,7 +17,7 @@ GAS_THRESHOLD = 350
 WEIGHT_THRESHOLD = 2.0
 
 last_alert_time = 0
-ALERT_COOLDOWN = 300   # 5 minutes
+ALERT_COOLDOWN = 120   # 5 minutes
 
 
 def send_sms(msg):
