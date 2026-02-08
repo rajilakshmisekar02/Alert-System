@@ -37,6 +37,9 @@ def send_sms(msg):
 def home():
     return "Alert System Running........"
 
+@app.route('/ping', methods=['GET'])
+def ping():
+    return jsonify({"server": "online"})
 
 @app.route('/data', methods=['POST'])
 def receive_data():
