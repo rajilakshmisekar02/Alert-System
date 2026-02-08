@@ -21,15 +21,15 @@ ALERT_COOLDOWN = 120   # 5 minutes
 
 
 def send_sms(msg):
-    try:
-        client.messages.create(
-            body=msg,
-            from_=FROM_NUMBER,
-            to=TO_NUMBER
-        )
-        print("SMS Sent")
-    except Exception as e:
-        print("SMS Error:", e)
+    # try:
+    #     client.messages.create(
+    #         body=msg,
+    #         from_=FROM_NUMBER,
+    #         to=TO_NUMBER
+    #     )
+    #     print("SMS Sent")
+    # except Exception as e:
+    #     print("SMS Error:", e)
     print(f'alert {msg}')
 
 
